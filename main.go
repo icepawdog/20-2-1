@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 )
 
 const bufferSize int = 25
-const drainInterval time.Duration = 10 * time.Second
+const drainInterval time.Duration = 5 * time.Second
 
 type RingIntBuffer struct {
 	array []int
@@ -21,6 +22,7 @@ type RingIntBuffer struct {
 }
 
 func NewRingIntBuffer(size int) *RingIntBuffer {
+	log.Println("create new buffer")
 	return &RingIntBuffer{make([]int, size), -1, size, sync.Mutex{}}
 }
 
@@ -56,12 +58,14 @@ func read(basicChan chan<- int, done chan bool) {
 		command = scan.Text()
 		if strings.EqualFold(command, "exit") {
 			fmt.Println("exit from programm")
+			log.Println("programm close by command: ", command)
 			close(done)
 			return
 		}
 		i, err := strconv.Atoi(command)
 		if err != nil {
 			fmt.Println("programm read only integer")
+			log.Println("data is not integer:", err)
 			continue
 		}
 		basicChan <- i
@@ -74,6 +78,8 @@ func removeNegative(prevChan <-chan int, nextChan chan<- int, done <-chan bool) 
 		case data := <-prevChan:
 			if data >= 0 {
 				nextChan <- data
+			} else {
+				log.Println("add remove negativ,", data)
 			}
 		case <-done:
 			return
@@ -87,6 +93,7 @@ func removeNotDivTrhree(prevChan <-chan int, nextChan chan<- int, done <-chan bo
 		case data := <-prevChan:
 			if data%3 == 0 {
 				nextChan <- data
+				log.Println("add divide trhee,", data)
 			}
 		case <-done:
 			return
@@ -106,6 +113,7 @@ func bufferFunc(prevChan <-chan int, nextChan chan<- int, done <-chan bool, size
 				for _, data := range bufferData {
 					nextChan <- data
 				}
+				log.Println("unloading from buffer by timeout")
 			}
 		case <-done:
 			return
